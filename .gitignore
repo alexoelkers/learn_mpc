@@ -1,0 +1,9 @@
+# python
+**/.venv/
+**/__pycache__/
+
+# opengen
+solvers/
+
+# vscode
+**/.vscode
