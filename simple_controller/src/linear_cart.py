@@ -5,7 +5,7 @@ import casadi.casadi as cs
 M = 1.0 # mass [kg]
 
 # solver constants
-DT = 0.5
+DT = 0.1
 N = 10 # horizon length
 NX = 2 # number of state variables
 NU = 1 # number of inputs
