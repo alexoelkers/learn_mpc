@@ -9,16 +9,14 @@ solver_name = "linear_cart"
 sys.path.insert(1, os.path.join(solver_dir, solver_name))
 linear_cart_mpc = __import__(solver_name)
 
-from src.linear_cart import DT, NX, M, N
+from src.linear_cart import DT, NX, M, N, M, system_ode
 
 # constants
-T = 60
+T = 10
 
 def update_system(x, u):
-    x[0] += DT * x[1]
-    x[1] += DT * u / M
-
-    return x
+    dx_dt = system_ode(x, u)
+    return [x[i] + DT * dx_dt[i] for i in range(NX)]
 
 def plot_state_evolution(t_series, x_series, u_series, x_ref):
     """a function to plot the evolution of the system over time"""
@@ -28,30 +26,30 @@ def plot_state_evolution(t_series, x_series, u_series, x_ref):
     pass
 
 def main():
-    t_series = np.arange(0, T, DT, dtype=float)
-    x_series = np.empty((len(t_series), NX), dtype=float)
-    u_series = np.empty(len(t_series), dtype=float)
+    t_series = np.arange(0, T, DT)
+    x_series = []
+    u_series = []
 
-    x = np.array([0.0, 0.0], dtype=float)
-    x_ref = np.array([10.0, 0.0], dtype=float)
+    x = [0.0, 0.0]
+    x_ref = [1.0, 0.0]
 
     solver = linear_cart_mpc.solver()
-    u_prev = np.zeros(N)
 
     for i, t in enumerate(t_series):
-        x_series[i] = x.copy()
+        x_series.append(x)
         # get control
         p =[x[0], x[1], x_ref[0], x_ref[1]]
-        result = solver.run(p=p, initial_guess=u_prev)
-        u_prev = result.solution
-        u_star = u_prev[0]
+        result = solver.run(p=p,)
+        u_star = result.solution[0]
+        u_series.append(u_star) 
+
         x = update_system(x, u_star)
         
-        u_series[i] = u_star 
+    x_series = np.array(x_series)
 
-    plt.plot(t_series, u_series, "r--")
+    plt.step(t_series, u_series, where="post", color="r", linestyle="--")
     plt.plot(t_series, x_series)
-    # plt.show()
+    plt.show()
 
 if __name__ == "__main__":
     main()

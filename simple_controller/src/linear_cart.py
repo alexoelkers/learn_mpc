@@ -2,21 +2,18 @@ import opengen as og
 import casadi.casadi as cs
 
 # model constants
-M = 1 # mass [kg]
+M = 1.0 # mass [kg]
 
 # solver constants
-DT = 0.1
+DT = 0.5
 N = 10 # horizon length
 NX = 2 # number of state variables
 NU = 1 # number of inputs
 
-UMIN = [-1., ] * N
-UMAX = [1.,] * N
+Q = cs.diag(cs.SX([1.0, 1.0]))
+R = 1.0
 
-Q = cs.diag(cs.SX([1., 1.]))
-R = 1.
-
-V = cs.diag(cs.SX([10., 10.]))
+V = cs.diag(cs.SX([10.0, 10.0]))
 
 def system_ode(x: cs.SX, u: cs.SX) -> cs.SX:
     """the ODE defining the system
@@ -25,34 +22,35 @@ def system_ode(x: cs.SX, u: cs.SX) -> cs.SX:
     u    -> force [N]
     """
     # sub into x for dx/dt
-    x[0] = x[1]
-    x[1] = u / M
-    return x
+    dx_dt = cs.SX.sym("dx_dt", NX)
+    dx_dt[0] = x[1]
+    dx_dt[1] = u / M
+    return dx_dt
 
 def update_system(x: cs.SX, u: cs.SX) -> cs.SX:
     return x + DT * system_ode(x, u)
 
-def stage_cost(x, u, x_ref):
-    return cs.bilin(Q, (x - x_ref)) + R * u ** 2
+def stage_cost(x, u):
+    return cs.bilin(Q, x) + R * u ** 2
 
-def terminal_cost(x, x_ref):
-    return cs.bilin(V, (x - x_ref))
+def terminal_cost(x):
+    return cs.bilin(V, x)
 
 def main():
     u_seq = cs.SX.sym("u", N * NU)  # sequence of all u's
     p = cs.SX.sym("p", 2 * NX)     # initial state, target state
     x, x_ref  = p[:NX], p[NX:]
 
-    total_cost = 0
+    total_cost = 0.0
 
     for i in range(N):
         u = u_seq[i]
 
-        total_cost += stage_cost(x, u, x_ref)  # update cost
+        total_cost += stage_cost(x - x_ref, u)  # update cost
         x = update_system(x, u)         # update state
 
-    total_cost += terminal_cost(x, x_ref)  # terminal cost
-    bounds = og.constraints.Rectangle(UMIN, UMAX)
+    total_cost += terminal_cost(x - x_ref)  # terminal cost
+    bounds = og.constraints.BallInf(None, 1.0)
 
     problem = og.builder.Problem(u_seq, p, total_cost)  \
         .with_constraints(bounds)
