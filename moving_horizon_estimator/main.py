@@ -21,16 +21,11 @@ np.random.seed(42)
 
 # constants
 T = 20
-NOISE = 1e-3
+NOISE = 1e-2
 
 def update_system(x, u):
     dx_dt = system_ode(x, u)
     return [x[i] + DT * dx_dt[i] for i in range(NX)]
-
-def update_system_with_noise(x, u):
-    dx_dt = system_ode(x, u)
-    return [x[i] + DT * dx_dt[i] + np.random.normal()*NOISE for i in range(NX)]
-    
 
 def plot_state_evolution(t_series, x_series, u_series, x_ref):
     """a function to plot the evolution of the system over time"""
@@ -71,7 +66,7 @@ def main():
         u_series.append(u_star) 
 
         # update guess horizons
-        x = update_system_with_noise(x, u_star) # this updates with noise
+        x = update_system(x, u_star + np.random.normal() * NOISE) # uncertain input
         y = measure_system(x) + np.random.normal() * NOISE # noise on measurement 
 
         # extend estimator horizons
@@ -89,8 +84,8 @@ def main():
     x_hat_series = np.array(x_hat_series)
 
     plt.step(t_series, u_series, where="post", color="r", linestyle="--")
-    # plt.plot(t_series, x_series)
-    plt.plot(t_series, x_hat_series)
+    plt.plot(t_series, x_series, "-")
+    plt.plot(t_series, x_hat_series, "--")
     plt.show()
 
 if __name__ == "__main__":
